@@ -1,0 +1,255 @@
+---
+title: "Customer segmentation"
+author: "Simon waweru"
+date: "2020 '11' 7"
+output:
+  word_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+ 
+  BUSINESS UNDERSTANDING
+  
+Kira Plastinina is a Russian brand that is sold through a defunct chain of retail stores in Russia, Ukraine, Kazakhstan, Belarus, China, Philippines, and Armenia. 
+Kira Plastinina, the world's youngest fashion designer who opened her first boutique when she was just 14, is one of the most disputed fashion figures in Russia. 
+Fans of her clothing argue that she's brought a breath of fresh air to the industry 
+
+BUSINESS OBJECTIVE.
+
+The brand's Sales and Marketing team would like to understand their customer's
+behavior from data that they have collected over the past year. More specifically, 
+they would like to learn the characteristics of customer groups.
+
+ DATASET INFORMATION
+ 
+* The dataset consists of 10 numerical and 8 categorical attributes. The 'Revenue' attribute can be used as the class label.
+
+* "Administrative", "Administrative Duration", "Informational", "Informational Duration", "Product Related" and "Product Related Duration" represents the number of different types of pages visited by the visitor in that session and total time spent in each of these page categories. The values of these features are derived from the URL information of the pages visited by the user and updated in real-time when a user takes an action, e.g. moving from one page to another. 
+
+* The "Bounce Rate", "Exit Rate" and "Page Value" features represent the metrics measured by "Google Analytics" for each page in the e-commerce site. 
+
+* The value of the "Bounce Rate" feature for a web page refers to the percentage of visitors who enter the site from that page and then leave ("bounce") without triggering any other requests to the analytics server during that session.
+
+* The value of the "Exit Rate" feature for a specific web page is calculated as for all pageviews to the page, the percentage that was the last in the session.
+
+* The "Page Value" feature represents the average value for a web page that a user visited before completing an e-commerce transaction. 
+
+* The "Special Day" feature indicates the closeness of the site visiting time to a specific special day (e.g. Mother's Day, Valentine's Day) in which the sessions are more likely to be finalized with the transaction. The value of this attribute is determined by considering the dynamics of e-commerce such as the duration between the order date and delivery date. For example, for Valentina's day, this value takes a nonzero value between February 2 and February 12, zero before and after this date unless it is close to another special day, and its maximum value of 1 on February 8. 
+
+* The dataset also includes the operating system, browser, region, traffic type, visitor type as returning or new visitor, a Boolean value indicating whether the date of the visit is weekend, and month of the year.
+
+
+IMPORT DATA
+
+```{r echo=TRUE}
+data<-data.table::fread('http://bit.ly/EcommerceCustomersDataset')
+```
+DATA UNDERSTANDING.
+```{R echo=TRUE}
+### having a glimpse of the data
+dplyr::glimpse(data)
+```
+
+```{r echo=TRUE}
+## viewing the data
+View(data)
+```
+```{r echo=TRUE}
+str(data)
+```
+
+Our data have 12330 rows and 18 columns we have  numbers, intergers,characters,logical data types
+
+DATA CLEANING AND MANIPULATION
+
+ 1. Handling missing values.
+```{r echo=TRUE}
+### looking for missing values
+
+colSums(is.na(data))
+```
+```{r echo=TRUE}
+### removing null values
+
+data<-na.omit(data)
+
+colSums(is.na(data))
+```
+
+```{r echo=TRUE}
+###  lookiing for duplicates
+anyDuplicated(data)
+```
+ 2.Handling duplicates
+```{r echo=TRUE}
+### removing dublicates by selecting unique entries
+data<-unique(data)
+anyDuplicated(data)
+```
+ 3. Handling outliers
+```{r echo=TRUE}
+### Subset your data to numerical columns only
+num <- data[, c(1,2,3,4,5,6,7,8,9,10)]
+### 
+```
+ looking for outliers
+```{r echo=TRUE}
+boxplot.stats(num$Administrative)
+```
+```{r echo=TRUE}
+boxplot.stats(num$Administrative_Duration)
+```
+```{r echo=TRUE}
+boxplot.stats(num$Informational)
+```
+```{r echo=TRUE}
+boxplot.stats(num$Informational_Duration)
+```
+```{r echo=TRUE}
+boxplot.stats(num$ProductRelated)
+```
+
+```{r echo=TRUE}
+boxplot.stats(num$ProductRelated_Duration)
+```
+
+```{r echo=TRUE}
+boxplot.stats(num$BounceRates)
+```
+```{r echo=TRUE}
+boxplot.stats(num$ExitRates)
+```
+
+```{r echo=TRUE}
+boxplot.stats(num$PageValues)
+```
+```{r echo=TRUE}
+boxplot.stats(num$SpecialDay)
+```
+
+EXPLORATORY DATA ANALYSIS
+ 1. Univariete analysis
+ Frequency table
+```{r echo=TRUE}
+
+table(data$VisitorType)
+```
+
+```{r echo=TRUE}
+table(data$Month)
+```
+
+```{r echo=TRUE}
+### traffictype
+table(data$TrafficType)
+```
+
+ 2. Bivariate analysis
+```{r echo=TRUE}
+## correlation of adminitrative and administrative duration
+cor(data$Administrative ,data$Administrative_Duration)
+```
+
+```{r echo=TRUE}
+##correlation of informationa; & informational duration
+cor(data$Informational,data$Informational_Duration)
+```
+
+```{r echo=TRUE}
+cor(data$ProductRelated,data$ProductRelated_Duration)
+```
+All the information accessed and the duration spent reading the information are highly positively correlated, all
+are above 0.5
+
+```{r echo=TRUE}
+
+plot= ggplot2::ggplot(data = data, aes(x = Administrative , fill = Revenue))+ 
+geom_bar(width = 0.5)
+plot
+```
+Most administrative counts have false revenues than true ones
+
+  Multivariate analysis
+    Correlation
+```{r echo=TRUE}
+data.cor = cor(num)
+corrplot::corrplot(data.cor, type = 'upper')
+```
+### Correlation matrix
+```{r}
+library('ggcorrplot')
+options(repr.plot.width=20,repr.plot.height = 20)
+corr = round(cor(select_if(data, is.numeric)), 1)
+ggcorrplot(corr, hc.order = T, ggtheme = ggplot2::theme_grey,
+           colors = c("cyan", "blue", "maroon"), lab = T)
+```
+CLUSTERING
+  
+  1. K_ MEANS CLUSTERING
+
+```{r echo=TRUE}
+## label encoding columns with characters
+data$Month=as.integer(as.factor(data$Month))
+data$VisitorType=as.integer(as.factor(data$VisitorType))
+data$Weekend=as.integer(as.factor(data$Weekend))
+data$Revenue=as.integer(as.factor(data$Revenue))
+```
+```{r echo=TRUE}
+### scaling the data  
+scaled_data<-scale(data)
+View(scaled_data)
+```
+```{r, echo=TRUE}
+#### performing K means clustering
+k_clus<-kmeans(scaled_data,4)
+### looking at the clusters
+k_clus$cluster
+#### looking at the size of the clusters
+k_clus$size
+```
+```{r echo=TRUE}
+##### creating a an aggreate of the clusters
+aggregate(data,by=list(clusters=k_clus$cluster),mean)
+```
+```{r echo=TRUE}
+### mutating a column that contain the clusters
+k_mean<-dplyr::mutate(data,clusters=k_clus$cluster)
+head(k_mean)
+View(k_mean)
+```
+```{r, echo=TRUE}
+### visualizing clusters
+
+```
+
+ 2. HIERARCHICAL CLUSTERING
+```{r echo=TRUE}
+### using the same scaled_data lets do hierarcical clustering
+### calculating the euclidean distance
+
+distance<-dist(scaled_data,method = 'euclidean')
+
+### calculating the hierarchial clusters, we will have same clusters as K_ means
+#1. we will use wards.D2 as our ward.D2 as our linkage
+clustering.1<-hclust(distance,method = 'ward.D2')
+plot(clustering.1,cex=0.6,hang = -1)
+
+```
+```{r echo=TRUE}
+### cutting the clusters into 4 groups
+group<-cutree(clustering.1,k=6)
+### viewing the clustered groups
+table(group)
+```
+```{r echo=TRUE}
+### creating a table
+hclust<-dplyr::mutate(data,clusters=group)
+head(hclust)
+```
+```{r echo=TRUE}
+
+```
